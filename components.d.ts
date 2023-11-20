@@ -8,6 +8,13 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AButton: typeof import('@arco-design/web-vue')['Button']
+    ACollapse: typeof import('@arco-design/web-vue')['Collapse']
+    ACollapseItem: typeof import('@arco-design/web-vue')['CollapseItem']
+    AForm: typeof import('@arco-design/web-vue')['Form']
+    AFormItem: typeof import('@arco-design/web-vue')['FormItem']
+    AInputNumber: typeof import('@arco-design/web-vue')['InputNumber']
+    ASpin: typeof import('@arco-design/web-vue')['Spin']
+    ASwitch: typeof import('@arco-design/web-vue')['Switch']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
   }
 }

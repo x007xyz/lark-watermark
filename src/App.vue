@@ -5,17 +5,72 @@ import {
   IOpenAttachment,
   bitable,
 } from "@lark-base-open/js-sdk";
+import dayjs from "dayjs";
 import { dataURItoFile } from "./utils";
+import "@arco-design/web-vue/lib/message/style/css";
+import { Message } from "@arco-design/web-vue";
 
 const canvasRef = ref<HTMLCanvasElement>();
 
+const form = reactive({
+  hasDate: true,
+  hasPosition: true,
+  fontSize: 24,
+});
+
+const position = ref<{
+  latitude: number;
+  longitude: number;
+}>();
+
+const positionDisable = ref(false);
+
+const loading = ref(false);
+
+const loadingTip = ref("");
+
+watch(
+  () => form.hasPosition,
+  (hasPosition) => {
+    if (hasPosition) {
+      if (!navigator.geolocation) {
+        Message.warning("你的浏览器不支持地理位置");
+        positionDisable.value = true;
+        form.hasPosition = false;
+      } else {
+        navigator.geolocation.getCurrentPosition(
+          (res) => {
+            positionDisable.value = false;
+            position.value = {
+              latitude: res.coords.latitude,
+              longitude: res.coords.longitude,
+            };
+          },
+          (err) => {
+            positionDisable.value = true;
+            form.hasPosition = false;
+            Message.error(`获取地理位置失败：${err.message}`);
+          },
+        );
+      }
+    }
+  },
+  { immediate: true, deep: true },
+);
+
 function watermark(url: string, filename: string, type: string): Promise<File> {
+  let markText = "";
+  if (form.hasDate) {
+    markText += dayjs().format("YYYY-MM-DD HH:mm:ss");
+  }
+  if (form.hasPosition) {
+    markText += position.value?.latitude + "," + position.value?.longitude;
+  }
   return new Promise((resolve) => {
     const img = new Image();
     img.src = url;
     img.crossOrigin = "anonymous";
     img.onload = function () {
-      console.log(canvasRef.value);
       if (!canvasRef.value) {
         return;
       }
@@ -29,13 +84,13 @@ function watermark(url: string, filename: string, type: string): Promise<File> {
       ctx.drawImage(img, 0, 0);
 
       // 添加水印文本
-      ctx.font = "30px Arial";
+      ctx.font = `${form.fontSize}px Arial`;
       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
       ctx.textAlign = "center";
       ctx.fillText(
-        "你的水印文字",
+        markText,
         canvasRef.value.width / 2,
-        canvasRef.value.height - 30,
+        canvasRef.value.height / 2,
       );
       resolve(dataURItoFile(canvasRef.value.toDataURL(type), filename, type));
     };
@@ -55,12 +110,13 @@ onMounted(async () => {
     const field = await table.getField<IAttachmentField>(data.fieldIds[0]);
     // 获取新的附件值
     newVals = await field.getValue(data.recordId);
-    console.log("record modify", newVals, curVals);
     // 对比newVals和curVals，获取新增附件的index
     const index = newVals.findIndex(
       (item) => !curVals.map(({ token }) => token).includes(item.token),
     );
     if (index > -1) {
+      loading.value = true;
+      loadingTip.value = "正在生成水印...";
       const urls = await field.getAttachmentUrls(data.recordId);
       const file = await watermark(
         urls[index],
@@ -78,6 +134,7 @@ onMounted(async () => {
       newVals.splice(index, 1, attachment);
       field.setValue(data.recordId, newVals);
       curVals = newVals;
+      loading.value = false;
     }
   });
   bitable.base.onSelectionChange(async (params) => {
@@ -99,10 +156,32 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
-    <AButton>Save</AButton>
-    <canvas ref="canvasRef"></canvas>
-  </div>
+  <ASpin :loading="loading" :tip="loadingTip" style="width: 100%">
+    <div style="width: 100%; height: 100%">
+      <ACollapse>
+        <a-collapse-item key="1" header="水印配置">
+          <AForm :model="form" layout="horizontal" auto-label-width>
+            <AFormItem field="hasDate" label="时间水印">
+              <ASwitch v-model="form.hasDate" />
+            </AFormItem>
+            <AFormItem field="hasPosition" label="位置水印">
+              <ASwitch v-model="form.hasPosition" :disabled="positionDisable" />
+            </AFormItem>
+            <AFormItem field="fontSize" label="水印字号">
+              <AInputNumber v-model="form.fontSize" :min="10" :max="100" />
+            </AFormItem>
+          </AForm>
+        </a-collapse-item>
+      </ACollapse>
+    </div>
+  </ASpin>
+  <canvas ref="canvasRef" class="canvas"></canvas>
 </template>
 
-<style scoped></style>
+<style scoped>
+.canvas {
+  position: fixed;
+  bottom: 9999px;
+  right: 9999px;
+}
+</style>
