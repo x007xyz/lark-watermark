@@ -109,7 +109,7 @@ onMounted(async () => {
     }
     const field = await table.getField<IAttachmentField>(data.fieldIds[0]);
     // 获取新的附件值
-    newVals = await field.getValue(data.recordId);
+    newVals = (await field.getValue(data.recordId)) || [];
     // 对比newVals和curVals，获取新增附件的index
     const index = newVals.findIndex(
       (item) => !curVals.map(({ token }) => token).includes(item.token),
@@ -149,7 +149,7 @@ onMounted(async () => {
       // 获取附件的 URL
       // const urls = await field.getAttachmentUrls(params.data.recordId);
       // 获取附近的值
-      curVals = await field.getValue(params.data.recordId);
+      curVals = (await field.getValue(params.data.recordId)) || [];
     }
   });
 });
