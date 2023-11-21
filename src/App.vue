@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import { dataURItoFile } from "./utils";
 import "@arco-design/web-vue/lib/message/style/css";
 import { Message } from "@arco-design/web-vue";
+import { onMounted, reactive, ref, watch } from "vue";
 
 const canvasRef = ref<HTMLCanvasElement>();
 
